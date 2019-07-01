@@ -19,8 +19,8 @@ export function createPlugin<HttpServer = http.Server, HttpRequest = http.Incomi
 export function createMiddleware<HttpServer = http.Server, HttpRequest = http.IncomingMessage, HttpResponse = http.ServerResponse>(options: NunuOptions): Middleware<HttpServer, HttpRequest, HttpResponse> {
     return (req: HttpRequest, res: HttpResponse, callback: (err?: FastifyError) => void) => {
         // todo
+       
+       
         
-
-
     }
 }
