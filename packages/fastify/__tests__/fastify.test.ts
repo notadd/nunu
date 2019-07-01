@@ -4,12 +4,15 @@ import jwt from 'jsonwebtoken';
 const app = fastify();
 const nunu = createMiddleware({
     secret: '秘钥',
-    algorithms: ['HS256']
+    userProperty: 'name',
+    verifyOptions: {
+        algorithms: ['HS256']
+    }
 });
-app.use(nunu)
+app.use(nunu);
 
+// 创建token
 app.get('/token', () => {
-    // 创建token
     const token = jwt.sign(
         'payload: haha',
         '秘钥'

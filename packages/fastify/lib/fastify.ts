@@ -1,17 +1,30 @@
 import { FastifyError, FastifyInstance, Middleware, Plugin } from 'fastify';
+import expressUnless from 'express-unless';
 import * as http from 'http';
 import jwt from 'jsonwebtoken';
 import set from 'lodash.set';
+
+export interface VerifyOptions {
+    algorithms?: string[];
+    audience?: string | RegExp | Array<string | RegExp>;
+    clockTimestamp?: number;
+    clockTolerance?: number;
+    issuer?: string | string[];
+    ignoreExpiration?: boolean;
+    ignoreNotBefore?: boolean;
+    jwtid?: string;
+    subject?: string;
+}
 export type SecretCreater = (req: http.IncomingMessage, header: any, payload: any) => Promise<string>;
 export type GetToken = (req: http.IncomingMessage) => Promise<any>;
 export interface NunuOptions {
     secret: string | SecretCreater;
-    userProperty?: string;
     credentialsRequired?: boolean;
+    userProperty?: string;
     requestProperty?: string;
     isRevoked?: SecretCreater;
     [property: string]: any;
-    algorithms: string[];
+    verifyOptions: VerifyOptions;
 }
 /**
  * 插件
@@ -30,16 +43,14 @@ export function createPlugin<HttpServer = http.Server, HttpRequest extends http.
  */
 export function createMiddleware<HttpServer = http.Server, HttpRequest extends http.IncomingMessage = http.IncomingMessage, HttpResponse = http.ServerResponse>(options: NunuOptions): Middleware<HttpServer, HttpRequest, HttpResponse> {
     return async (req: HttpRequest, res: HttpResponse, callback: (err?: FastifyError) => void) => {
-        // 判断options是否存在，以及options里面有没有传入秘钥，没有抛异常
+
         if (!options || !options.secret) {
             throw new Error('secret should be set')
         };
-        let _resultProperty: any;
-        let _requestProperty = options.requestProperty || options.userProperty || 'user';
+        let requestProperty = options.requestProperty || options.userProperty || 'user';
         let credentialsRequired = typeof (options.credentialsRequired) === 'undefined' ? true : options.credentialsRequired;
-
         let token: any;
-        // 跨域预检查请求头
+
         if (req.method === 'OPTIONS') {
             callback();
         }
@@ -75,7 +86,6 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             return callback(err);
         }
 
-        // get secret
         async function getSecret(): Promise<any> {
             return new Promise((resolve, reject) => {
                 if (typeof options.secret === 'string') {
@@ -89,7 +99,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
 
         async function verifyToken(secret: string): Promise<object | string> {
             return new Promise((resolve, reject) => {
-                jwt.verify(token, secret, {}, (err, revoked) => {
+                jwt.verify(token, secret, options.verifyOptions, (err, revoked) => {
                     if (err) {
                         reject(err)
                     }
@@ -120,18 +130,15 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                 }
             })
         }
-        await checkRevoked(vtoken).then(response => {
+        await checkRevoked(vtoken).then(res => {
             // 数据添加到req
-            if (_requestProperty) {
-                set(req, _requestProperty, response);
+            if (requestProperty) {
+                set(req, requestProperty, res);
                 callback();
             }
         }).catch(res => {
             callback(res);
         })
-
-
-
 
     }
 }
