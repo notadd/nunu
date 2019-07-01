@@ -89,16 +89,15 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
 
         async function verifyToken(secret: string): Promise<object | string> {
             return new Promise((resolve, reject) => {
-                jwt.verify(token, secret, { algorithms: options.algorithms }, (err, revoked) => {
+                jwt.verify(token, secret, {}, (err, revoked) => {
                     if (err) {
-                        return reject(err)
+                        reject(err)
                     }
                     resolve(revoked)
                 })
             })
         }
         const vtoken = await verifyToken(secret)
-        console.log(vtoken);
 
         /**
          * 
@@ -116,6 +115,8 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                         }
                         resolve(vtoken);
                     }).catch(res => reject(res))
+                } else {
+                    resolve(vtoken);
                 }
             })
         }
@@ -123,12 +124,11 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             // 数据添加到req
             if (_requestProperty) {
                 set(req, _requestProperty, response);
+                callback();
             }
         }).catch(res => {
             callback(res);
         })
-
-
 
 
 

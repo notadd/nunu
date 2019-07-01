@@ -11,11 +11,8 @@ app.use(nunu)
 app.get('/token', () => {
     // 创建token
     const token = jwt.sign(
-        'user:wahaha',
-        '123456',
-        {
-            algorithm: 'HS256'
-        }
+        'payload: haha',
+        '秘钥'
     )
     return new Promise((resolve, reject) => {
         return resolve(token);
