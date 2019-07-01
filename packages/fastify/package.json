@@ -22,5 +22,11 @@
   },
   "bugs": {
     "url": "https://github.com/meepobrother/b2b-shop/issues"
+  },
+  "dependencies": {
+    "lodash.set": "^4.3.2"
+  },
+  "devDependencies": {
+    "tsconfig-paths": "^3.8.0"
   }
 }
