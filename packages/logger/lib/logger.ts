@@ -5,11 +5,10 @@ import { join } from 'path';
 
 
 export interface NunuOptions { 
-   url?:string
-   method?:string
-   [appenders:string]:any
-   
-   
+   [categories:string]:object
+  
+  
+
 }
 /**
  * 插件
@@ -33,7 +32,8 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
         // todo
         //  (req as any).headers
         const { url, method  } = req;
-    
+
+        //配置文件
         log4js.configure({
             categories: {
                 default: {
