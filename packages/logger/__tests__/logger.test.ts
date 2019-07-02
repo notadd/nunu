@@ -2,6 +2,22 @@ import { createMiddleware } from "../lib/logger";
 import fastify from 'fastify';
 const app = fastify();
 const logger = createMiddleware({
+    categories: {
+        default: {
+            appenders: [
+                "appender"
+            ], level: "info"
+        },
+
+        categorie: {
+            appenders: [
+                "appender",
+            ], level: "info"
+        }
+    },
+    appenders: {
+        appender: { type: "file", filename: (__dirname) + "/log.txt" }
+    }
 });
 app.use(logger)
 
@@ -24,4 +40,4 @@ app.use(logger)
 //         return resolve('hello world');
 //     })
 // })
- app.listen(9000)
+app.listen(9000)

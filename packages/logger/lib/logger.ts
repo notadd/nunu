@@ -1,14 +1,20 @@
 import { Plugin, FastifyInstance, FastifyError, Middleware } from 'fastify';
 import * as http from 'http'
 import log4js, { Logger, levels } from 'log4js';
-import { join } from 'path';
 
-
-export interface NunuOptions { 
-   [categories:string]:object
-  
-  
-
+export interface NunuOptions {
+    categories: {
+        [key: string]: {
+            appenders: string[];
+            level: string;
+        }
+    },
+    appenders: {
+        [key: string]: {
+            type: string;
+            filename: string;
+        }
+    }
 }
 /**
  * 插件
@@ -31,24 +37,10 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
 
         // todo
         //  (req as any).headers
-        const { url, method  } = req;
-
+        const { url, method } = req;
         //配置文件
-        log4js.configure({
-            categories: {
-                default: {
-                    appenders: ['nunu'],
-                    level: 'info',
-                }
-            },
-            appenders: {
-                nunu: {
-                    type: 'file',
-                    filename: join(__dirname, 'log.txt'),
-                }
-            }
-        });
+        log4js.configure(options);
         log4js.getLogger().info(JSON.stringify({ url, method, }));
-        callback(); 
+        callback();
     }
 }
