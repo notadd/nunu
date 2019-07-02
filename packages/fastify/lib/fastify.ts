@@ -56,7 +56,6 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
         let requestProperty = options.requestProperty || options.userProperty || 'user';
         let credentialsRequired = typeof (options.credentialsRequired) === 'undefined' ? true : options.credentialsRequired;
         let token: any;
-
         if (req.method === 'OPTIONS') {
             callback();
         }
@@ -82,7 +81,6 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                 callback(new Error('Format is Authorization: Bearer [token]'));
             }
         }
-
         let dtoken: any;
         try {
             // 返回解码后的有效负载，而不验证签名是否有效。
@@ -90,7 +88,6 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
         } catch (err) {
             return callback(err);
         }
-
         async function getSecret(): Promise<any> {
             return new Promise((resolve, reject) => {
                 if (typeof options.secret === 'string') {
@@ -109,7 +106,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                     } else {
                         resolve(revoked)
                     }
-                })
+                });
             })
         }
 

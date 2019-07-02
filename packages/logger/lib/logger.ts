@@ -3,8 +3,6 @@ import * as http from 'http'
 import log4js, { Logger } from 'log4js';
 import { join } from 'path';
 
-
-
 export interface NunuOptions { }
 /**
  * 插件
@@ -25,8 +23,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
     return (req: HttpRequest, res: HttpResponse, callback: (err?: FastifyError) => void) => {
         // todo
         //  (req as any).headers
-        const { url, method  } = req;
-    
+        const { url, method } = req;
         log4js.configure({
             categories: {
                 default: {
@@ -42,9 +39,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             }
         });
         log4js.getLogger().info(JSON.stringify({ url, method, }));
-        
         console.log(req.headers);
-        
     }
-    
+
 }
