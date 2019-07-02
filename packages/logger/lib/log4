@@ -1,0 +1,5 @@
+{
+    appenders:{"name":{type:"file",fileName:"/home/gj003/workspace/nunu/nunu/packages/logger/lib/log.txt",maxLogSize:10}},
+    categories:{}
+
+}
