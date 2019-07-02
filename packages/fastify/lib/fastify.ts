@@ -14,15 +14,16 @@ export interface VerifyOptions {
     jwtid?: string;
     subject?: string;
 }
-export type SecretCreater = (req: http.IncomingMessage, header: any, payload: any) => Promise<string>;
-export type GetToken = (req: http.IncomingMessage) => Promise<any>;
+export type decodeToken = { [key: string]: string } | null | string;
+export type SecretCreater = (req: http.IncomingMessage, header: string, payload: string) => Promise<string>;
+export type GetToken = (req: http.IncomingMessage) => string;
 export interface NunuOptions {
     secret: string | SecretCreater;
     credentialsRequired?: boolean;
     userProperty?: string;
     requestProperty?: string;
     isRevoked?: SecretCreater;
-    [property: string]: any;
+    getToken?: GetToken;
     verifyOptions: VerifyOptions;
     unlessPath?: string[];
 }
@@ -34,7 +35,7 @@ export function createPlugin<HttpServer = http.Server, HttpRequest extends http.
     options: NunuOptions
 ): Plugin<HttpServer, HttpRequest, HttpResponse, T> {
     return (instance: FastifyInstance<HttpServer, HttpRequest, HttpResponse>, opts: T, callback: (err?: FastifyError) => void) => {
-        // todo
+
     }
 }
 /**
@@ -46,25 +47,24 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
         if (req && req.originalUrl && options && options.unlessPath) {
             const url = options.unlessPath.find(val => val === req.originalUrl)
             if (url) {
-                callback();
-                return;
+                return callback();
             }
         }
         if (!options || !options.secret) {
-            callback(new Error('secret should be set'));
-        };
-        let requestProperty = options.requestProperty || options.userProperty || 'user';
-        let credentialsRequired = typeof (options.credentialsRequired) === 'undefined' ? true : options.credentialsRequired;
-        let token: any;
-
+            return callback(new Error('secret should be set'));
+        }
         if (req.method === 'OPTIONS') {
             callback();
         }
+
+        let requestProperty = options.requestProperty || options.userProperty || 'user';
+        let credentialsRequired = typeof (options.credentialsRequired) === 'undefined' ? true : options.credentialsRequired;
+        let token: string = '';
         if (options.getToken) {
             try {
                 token = options.getToken(req);
             } catch (e) {
-                callback(e)
+                return callback(e)
             }
         } else if (req.headers && req.headers.authorization) {
             let parts = req.headers.authorization.split(' ');
@@ -77,13 +77,14 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                 }
             }
         }
+
         if (!token) {
             if (credentialsRequired) {
-                callback(new Error('Format is Authorization: Bearer [token]'));
+                return callback(new Error('Format is Authorization: Bearer [token]'));
             }
         }
 
-        let dtoken: any;
+        let dtoken: decodeToken;
         try {
             // 返回解码后的有效负载，而不验证签名是否有效。
             dtoken = jwt.decode(token, { complete: true }) || {};
@@ -91,12 +92,14 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             return callback(err);
         }
 
-        async function getSecret(): Promise<any> {
+        async function getSecret(): Promise<string> {
             return new Promise((resolve, reject) => {
                 if (typeof options.secret === 'string') {
                     resolve(options.secret);
                 } else {
-                    resolve(options.secret(req, dtoken.header, dtoken.payload));
+                    if (dtoken !== null && typeof (dtoken) !== 'string') {
+                        resolve(options.secret(req, dtoken.header, dtoken.payload));
+                    }
                 }
             })
         }
@@ -113,9 +116,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             })
         }
 
-
         /**
-         * 
          * @param vtoken 要检测的token
          * @returns string 检测通过
          * @requires error
@@ -124,12 +125,14 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             return new Promise((resolve, reject) => {
                 if (options.isRevoked) {
                     // 判断这个token是否被撤销
-                    options.isRevoked(req, dtoken.header, dtoken.payload).then(res => {
-                        if (res) {
-                            reject(new Error(`this token has been revoked!`))
-                        }
-                        resolve(vtoken);
-                    })
+                    if (dtoken !== null && typeof (dtoken) !== 'string') {
+                        options.isRevoked(req, dtoken.header, dtoken.payload).then(res => {
+                            if (res) {
+                                reject(new Error(`this token has been revoked!`))
+                            }
+                            resolve(vtoken);
+                        })
+                    }
                 } else {
                     resolve(vtoken);
                 }
