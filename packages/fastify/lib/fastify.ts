@@ -2,7 +2,6 @@ import { FastifyError, FastifyInstance, Middleware, Plugin } from 'fastify';
 import * as http from 'http';
 import jwt from 'jsonwebtoken';
 import set from 'lodash.set';
-import { ValidationError } from './error/validation.error';
 
 export interface VerifyOptions {
     algorithms?: string[];
@@ -52,7 +51,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             }
         }
         if (!options || !options.secret) {
-            callback(new ValidationError(401, 'secret should be set'));
+            callback(new Error('secret should be set'));
         };
         let requestProperty = options.requestProperty || options.userProperty || 'user';
         let credentialsRequired = typeof (options.credentialsRequired) === 'undefined' ? true : options.credentialsRequired;
