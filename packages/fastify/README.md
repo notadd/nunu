@@ -46,6 +46,7 @@ function getToken(req: http.IncomingMessage): sring{
         }
     }
     return '';
+ }
 
     const nunu = createMiddleware({
     secret: '123456',
