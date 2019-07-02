@@ -1,11 +1,16 @@
 import { Plugin, FastifyInstance, FastifyError, Middleware } from 'fastify';
 import * as http from 'http'
-import log4js, { Logger } from 'log4js';
+import log4js, { Logger, levels } from 'log4js';
 import { join } from 'path';
 
 
-
-export interface NunuOptions { }
+export interface NunuOptions { 
+   url?:string
+   method?:string
+   [appenders:string]:any
+   
+   
+}
 /**
  * 插件
  * @param options 
@@ -15,6 +20,7 @@ export function createPlugin<HttpServer = http.Server, HttpRequest = http.Incomi
 ): Plugin<HttpServer, HttpRequest, HttpResponse, T> {
     return (instance: FastifyInstance<HttpServer, HttpRequest, HttpResponse>, opts: T, callback: (err?: FastifyError) => void) => {
         // todo
+
     }
 }
 /**
@@ -23,6 +29,7 @@ export function createPlugin<HttpServer = http.Server, HttpRequest = http.Incomi
  */
 export function createMiddleware<HttpServer = http.Server, HttpRequest extends http.IncomingMessage = http.IncomingMessage, HttpResponse = http.ServerResponse>(options: NunuOptions): Middleware<HttpServer, HttpRequest, HttpResponse> {
     return (req: HttpRequest, res: HttpResponse, callback: (err?: FastifyError) => void) => {
+
         // todo
         //  (req as any).headers
         const { url, method  } = req;
@@ -31,7 +38,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             categories: {
                 default: {
                     appenders: ['nunu'],
-                    level: 'info'
+                    level: 'info',
                 }
             },
             appenders: {
@@ -42,9 +49,6 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             }
         });
         log4js.getLogger().info(JSON.stringify({ url, method, }));
-        
-        console.log(req.headers);
-        
+        callback(); 
     }
-    
 }
