@@ -2,6 +2,7 @@ import fastify from 'fastify';
 import * as http from 'http';
 import jwt from 'jsonwebtoken';
 import { createMiddleware } from '../lib/fastify';
+
 function getToken(req: http.IncomingMessage): string {
     let token: string;
     if (req.headers && req.headers.authorization) {
@@ -22,7 +23,7 @@ function getToken(req: http.IncomingMessage): string {
 const app = fastify();
 const nunu = createMiddleware({
     secret: '123456',
-    unlessPath: ['/token','/favicon.ico'],
+    unlessPath: ['/token', '/favicon.ico'],
     requestProperty: 'message',
     verifyOptions: {
         algorithms: ['HS256'], //default HS256
@@ -32,7 +33,7 @@ app.use(nunu);
 
 declare global {
     namespace NuNu {
-        interface Request { 
+        interface Request {
             user: {
                 username: string;
             }
@@ -43,13 +44,13 @@ declare global {
 }
 
 // 创建token
-app.get('/token', (req,res) => {
+app.get('/token', (req, res) => {
     const token = jwt.sign(
         {
             'username': 'zhangsan'
         },
         '123456',
-        { expiresIn: 60 }
+        { expiresIn: 60 * 5 }
     )
     return new Promise((resolve, reject) => {
         return resolve(token);

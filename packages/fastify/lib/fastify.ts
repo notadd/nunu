@@ -3,21 +3,10 @@ import * as http from 'http';
 import jwt from 'jsonwebtoken';
 import set from 'lodash.set';
 
-
-export interface VerifyOptions {
-    algorithms?: string[];
-    audience?: string | RegExp | Array<string | RegExp>;
-    clockTimestamp?: number;
-    clockTolerance?: number;
-    issuer?: string | string[];
-    ignoreExpiration?: boolean;
-    ignoreNotBefore?: boolean;
-    jwtid?: string;
-    subject?: string;
-}
 export type DecodeToken = { [key: string]: string } | null | string;
 export type SecretCreater = (req: http.IncomingMessage, header: string, payload: string) => Promise<string>;
 export type GetToken = (req: http.IncomingMessage) => string;
+
 export interface NunuOptions {
     secret: string | SecretCreater;
     verifyOptions: VerifyOptions;
@@ -30,39 +19,65 @@ export interface NunuOptions {
     getCache?: Cache;
 }
 
-export function decodeCache(cache: Cache, token: string, dtoken: DecodeToken) {
-    const cacheToken = cache.get<DecodeToken>(token);
-    if (cacheToken) {
-        dtoken = cacheToken;
+export interface VerifyOptions {
+    algorithms?: string[];
+    audience?: string | RegExp | Array<string | RegExp>;
+    clockTimestamp?: number;
+    clockTolerance?: number;
+    issuer?: string | string[];
+    ignoreExpiration?: boolean;
+    ignoreNotBefore?: boolean;
+    jwtid?: string;
+    subject?: string;
+}
+
+export function vefiryCache(options: NunuOptions, token: string, secret: string) {
+    const res = options.getCache ? options.getCache.get(token) : MemoryCache.get<any | string>(token);
+    if (res) {
+        if (res.exp >= new Date().getTime() / 1000) {
+            options.getCache ? options.getCache.delete(token) : MemoryCache.delete(token);
+            return Promise.reject('token过期了')
+        }
+        return Promise.resolve(res);
     } else {
-        // 返回解码后的有效负载，而不验证签名是否有效。
-        dtoken = jwt.decode(token, { complete: true }) || {};
-        cache.save(token, dtoken);
+        return new Promise((resolve, reject) => {
+            jwt.verify(token, secret, options.verifyOptions, (err, revoked) => {
+                if (err) {
+                    reject(err)
+                } else {
+                    options.getCache ? options.getCache.save(token, revoked) : MemoryCache.save<object | string>(token, revoked);
+                    resolve(revoked);
+                }
+            });
+        });
     }
-    return dtoken;
+
 }
 
 export interface Cache {
     get<T>(key: string): T
     save<T>(key: string, val: T): void
+    delete<T>(key: string): T
 }
 
-export class MemoryCache implements Cache {
-    map: Map<string, any> = new Map()
-    get<T>(key: string): T {
-        return this.map.get(key)
+export class MemoryCache {
+    static map: Map<string, any> = new Map()
+    static get<T>(key: string): T {
+        return this.map.get(key.toString());
     }
-    save<T>(key: string, val: T): void {
+    static save<T>(key: string, val: T): void {
         this.map.set(key, val);
+    }
+    static delete(key: string): boolean {
+        return this.map.delete(key);
     }
 }
 /**
  * 插件
  * @param options 
  */
-export function createPlugin<HttpServer = http.Server, HttpRequest extends Request = Request, HttpResponse = http.ServerResponse, T = any>(
-    options: NunuOptions
-): Plugin<HttpServer, HttpRequest, HttpResponse, T> {
+export function createPlugin<HttpServer = http.Server, HttpRequest extends http.IncomingMessage = http.IncomingMessage, HttpResponse = http.ServerResponse, T = any>(
+    options: NunuOptions): Plugin<HttpServer, HttpRequest, HttpResponse, T> {
     return (instance: FastifyInstance<HttpServer, HttpRequest, HttpResponse>, opts: T, callback: (err?: FastifyError) => void) => {
 
     }
@@ -118,12 +133,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
 
         let dtoken: DecodeToken = '';
         try {
-            if (options.getCache) {
-                dtoken = decodeCache(options.getCache, token, dtoken);
-            } else {
-                const memoryCache = new MemoryCache();
-                dtoken = decodeCache(memoryCache, token, dtoken);
-            }
+            dtoken = jwt.decode(token, { complete: true }) || {};
         } catch (err) {
             return callback(err);
         }
@@ -137,19 +147,11 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                         resolve(options.secret(req, dtoken.header, dtoken.payload));
                     }
                 }
-            })
+            });
         }
 
         async function verifyToken(secret: string): Promise<object | string> {
-            return new Promise((resolve, reject) => {
-                jwt.verify(token, secret, options.verifyOptions, (err, revoked) => {
-                    if (err) {
-                        reject(err)
-                    } else {
-                        resolve(revoked)
-                    }
-                })
-            })
+            return vefiryCache(options, token, secret);
         }
 
         /**
@@ -167,12 +169,12 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                                 reject(new Error(`this token has been revoked!`))
                             }
                             resolve(vtoken);
-                        })
+                        });
                     }
                 } else {
                     resolve(vtoken);
                 }
-            })
+            });
         }
         try {
             const secret = await getSecret();
