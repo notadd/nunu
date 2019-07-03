@@ -3,6 +3,7 @@ import * as http from 'http';
 import jwt from 'jsonwebtoken';
 import set from 'lodash.set';
 
+
 export interface VerifyOptions {
     algorithms?: string[];
     audience?: string | RegExp | Array<string | RegExp>;
@@ -14,44 +15,74 @@ export interface VerifyOptions {
     jwtid?: string;
     subject?: string;
 }
-export type decodeToken = { [key: string]: string } | null | string;
+export type DecodeToken = { [key: string]: string } | null | string;
 export type SecretCreater = (req: http.IncomingMessage, header: string, payload: string) => Promise<string>;
 export type GetToken = (req: http.IncomingMessage) => string;
 export interface NunuOptions {
     secret: string | SecretCreater;
+    verifyOptions: VerifyOptions;
     credentialsRequired?: boolean;
+    getToken?: GetToken;
     userProperty?: string;
     requestProperty?: string;
     isRevoked?: SecretCreater;
-    getToken?: GetToken;
-    verifyOptions: VerifyOptions;
     unlessPath?: string[];
+    getCache?: Cache;
+}
+
+export function decodeCache(cache: Cache, token: string, dtoken: DecodeToken) {
+    const cacheToken = cache.get<DecodeToken>(token);
+    if (cacheToken) {
+        dtoken = cacheToken;
+    } else {
+        // 返回解码后的有效负载，而不验证签名是否有效。
+        dtoken = jwt.decode(token, { complete: true }) || {};
+        cache.save(token, dtoken);
+    }
+    return dtoken;
+}
+
+export interface Cache {
+    get<T>(key: string): T
+    save<T>(key: string, val: T): void
+}
+
+export class MemoryCache implements Cache {
+    map: Map<string, any> = new Map()
+    get<T>(key: string): T {
+        return this.map.get(key)
+    }
+    save<T>(key: string, val: T): void {
+        this.map.set(key, val);
+    }
 }
 /**
  * 插件
  * @param options 
  */
-export function createPlugin<HttpServer = http.Server, HttpRequest extends http.IncomingMessage = http.IncomingMessage, HttpResponse = http.ServerResponse, T = any>(
+export function createPlugin<HttpServer = http.Server, HttpRequest extends Request = Request, HttpResponse = http.ServerResponse, T = any>(
     options: NunuOptions
 ): Plugin<HttpServer, HttpRequest, HttpResponse, T> {
     return (instance: FastifyInstance<HttpServer, HttpRequest, HttpResponse>, opts: T, callback: (err?: FastifyError) => void) => {
 
     }
 }
+
+
 /**
  * 中间件
  * @param options 
  */
 export function createMiddleware<HttpServer = http.Server, HttpRequest extends http.IncomingMessage = http.IncomingMessage, HttpResponse = http.ServerResponse>(options: NunuOptions): Middleware<HttpServer, HttpRequest, HttpResponse> {
-    return async (req: HttpRequest | any, res: HttpResponse, callback: (err?: FastifyError) => void) => {
-        if (req && req.originalUrl && options && options.unlessPath) {
-            const url = options.unlessPath.find(val => val === req.originalUrl)
+    return async (req: HttpRequest, res: HttpResponse, callback: (err?: FastifyError) => void) => {
+        if (req && (req as any).originalUrl && options && options.unlessPath) {
+            const url = options.unlessPath.find(val => val === (req as any).originalUrl)
             if (url) {
                 return callback();
             }
         }
         if (!options || !options.secret) {
-            return callback(new Error('secret should be set'));
+            return callback(new Error('Secret should be set'));
         }
         if (req.method === 'OPTIONS') {
             callback();
@@ -60,6 +91,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
         let requestProperty = options.requestProperty || options.userProperty || 'user';
         let credentialsRequired = typeof (options.credentialsRequired) === 'undefined' ? true : options.credentialsRequired;
         let token: string = '';
+
         if (options.getToken) {
             try {
                 token = options.getToken(req);
@@ -80,14 +112,18 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
 
         if (!token) {
             if (credentialsRequired) {
-                return callback(new Error('Format is Authorization: Bearer [token]'));
+                return callback(new Error('Format is Authorization'));
             }
         }
 
-        let dtoken: decodeToken;
+        let dtoken: DecodeToken = '';
         try {
-            // 返回解码后的有效负载，而不验证签名是否有效。
-            dtoken = jwt.decode(token, { complete: true }) || {};
+            if (options.getCache) {
+                dtoken = decodeCache(options.getCache, token, dtoken);
+            } else {
+                const memoryCache = new MemoryCache();
+                dtoken = decodeCache(memoryCache, token, dtoken);
+            }
         } catch (err) {
             return callback(err);
         }

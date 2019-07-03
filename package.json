@@ -14,11 +14,9 @@
 	},
 	"dependencies": {
 		"@types/async": "^3.0.0",
-		"@types/express-unless": "^0.5.1",
 		"@types/jsonwebtoken": "^8.3.2",
 		"@types/lodash.set": "^4.3.6",
 		"async": "^3.1.0",
-		"express-unless": "^0.5.0",
 		"fastify": "^2.6.0",
 		"jsonwebtoken": "^8.5.1",
 		"lodash.set": "^4.3.2",
