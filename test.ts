@@ -98,6 +98,6 @@ class VerifyException extends Error {
 //   });
    let map: Map < string, any > = new Map()
    map.set('123','456')
-   const par = map.delete('123')
+   const par = map.clear()
 
    console.log(par)

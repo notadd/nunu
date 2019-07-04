@@ -31,33 +31,14 @@ export interface VerifyOptions {
     subject?: string;
 }
 
-export function vefiryCache(options: NunuOptions, token: string, secret: string) {
-    const res = options.getCache ? options.getCache.get(token) : MemoryCache.get<any | string>(token);
-    if (res) {
-        if (res.exp >= new Date().getTime() / 1000) {
-            options.getCache ? options.getCache.delete(token) : MemoryCache.delete(token);
-            return Promise.reject('token过期了')
-        }
-        return Promise.resolve(res);
-    } else {
-        return new Promise((resolve, reject) => {
-            jwt.verify(token, secret, options.verifyOptions, (err, revoked) => {
-                if (err) {
-                    reject(err)
-                } else {
-                    options.getCache ? options.getCache.save(token, revoked) : MemoryCache.save<object | string>(token, revoked);
-                    resolve(revoked);
-                }
-            });
-        });
-    }
-
-}
+// export function verifyTokenCache(options: NunuOptions, token: string, secret: string) {
+// }
 
 export interface Cache {
     get<T>(key: string): T
     save<T>(key: string, val: T): void
     delete<T>(key: string): T
+    clear(): void;
 }
 
 export class MemoryCache {
@@ -65,11 +46,14 @@ export class MemoryCache {
     static get<T>(key: string): T {
         return this.map.get(key.toString());
     }
+    static delete(key: string): boolean {
+        return this.map.delete(key);
+    }
     static save<T>(key: string, val: T): void {
         this.map.set(key, val);
     }
-    static delete(key: string): boolean {
-        return this.map.delete(key);
+    static clear(): void {
+        this.map.clear();
     }
 }
 /**
@@ -150,8 +134,27 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             });
         }
 
-        async function verifyToken(secret: string): Promise<object | string> {
-            return vefiryCache(options, token, secret);
+        async function verifyTokenAndCache(secret: string): Promise<object | string> {
+            const res = options.getCache ? options.getCache.get(token) : MemoryCache.get<any | string>(token);
+            if (res) {
+                if (res.exp >= new Date().getTime() / 1000) {
+                    options.getCache ? options.getCache.delete(token) : MemoryCache.delete(token);
+                    return Promise.reject('Token expired')
+                }
+                return Promise.resolve(res);
+            } else {
+                return new Promise((resolve, reject) => {
+                    jwt.verify(token, secret, options.verifyOptions, (err, revoked) => {
+                        if (err) {
+                            reject(err)
+                        } else {
+                            options.getCache ? options.getCache.save<object | string>(token, revoked) :
+                                MemoryCache.save<object | string>(token, revoked);
+                            resolve(revoked);
+                        }
+                    });
+                });
+            }
         }
 
         /**
@@ -178,7 +181,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
         }
         try {
             const secret = await getSecret();
-            const vtoken = await verifyToken(secret);
+            const vtoken = await verifyTokenAndCache(secret);
             await checkRevoked(vtoken).then(res => {
                 // 数据添加到req
                 set(req, requestProperty, res);
