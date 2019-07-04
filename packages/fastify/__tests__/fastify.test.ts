@@ -1,35 +1,39 @@
-import { createMiddleware, MemoryCache } from '../lib/fastify';
 import fastify from 'fastify';
 import jwt from 'jsonwebtoken';
+import { createMiddleware, MemoryCache } from '../lib/fastify';
 
-let secret: string = '123456';
-
-function updateSecret(secrecy: string): void {
+function updateSecret(secrecy: string = '123456'): string {
     MemoryCache.clear();
-    secret = secrecy;
+    return secrecy;
 }
 
 const app = fastify();
 const nunu = createMiddleware({
-    secret: secret,
+    secret: updateSecret(),
     unlessPath: ['/token', '/favicon.ico'],
     verifyOptions: {
         algorithms: ['HS256'], //default HS256
     },
 });
+
 app.use(nunu);
 
 // 创建token
 app.get('/token', (req, res) => {
     const token = jwt.sign(
         { 'username': 'zhangsan' },
-        secret,
-        { expiresIn: 60 }
+        updateSecret(),
+        { expiresIn: 60 * 5 }
     )
-    return Promise.resolve(token);
+    res.send(token);
 })
 
-app.get('/hello', () => {
-    return Promise.resolve('hello,world!')
+app.get('/hello', (req, res) => {
+    res.send('hello world!')
+})
+
+app.get('/update', (req, res) => {
+    updateSecret(req.query.secret)
+    res.send('秘钥更换成功');
 })
 app.listen(9000)

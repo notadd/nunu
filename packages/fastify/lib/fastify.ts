@@ -12,7 +12,6 @@ export interface NunuOptions {
     verifyOptions: VerifyOptions;
     credentialsRequired?: boolean;
     getToken?: GetToken;
-    userProperty?: string;
     requestProperty?: string;
     isRevoked?: SecretCreater;
     unlessPath?: string[];
@@ -30,9 +29,6 @@ export interface VerifyOptions {
     jwtid?: string;
     subject?: string;
 }
-
-// export function verifyTokenCache(options: NunuOptions, token: string, secret: string) {
-// }
 
 export interface Cache {
     get<T>(key: string): T
@@ -67,7 +63,6 @@ export function createPlugin<HttpServer = http.Server, HttpRequest extends http.
     }
 }
 
-
 /**
  * 中间件
  * @param options 
@@ -87,7 +82,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             callback();
         }
 
-        let requestProperty = options.requestProperty || options.userProperty || 'user';
+        let requestProperty = options.requestProperty || 'user';
         let credentialsRequired = typeof (options.credentialsRequired) === 'undefined' ? true : options.credentialsRequired;
         let token: string = '';
 
@@ -134,14 +129,20 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             });
         }
 
+        /**
+         * 验证Token并增加缓存
+         * @param secret 秘钥
+         */
         async function verifyTokenAndCache(secret: string): Promise<object | string> {
             const res = options.getCache ? options.getCache.get(token) : MemoryCache.get<any | string>(token);
             if (res) {
-                if (res.exp >= new Date().getTime() / 1000) {
+                const time = new Date().getTime() / 1000;
+                if (res.exp <= time) {
                     options.getCache ? options.getCache.delete(token) : MemoryCache.delete(token);
                     return Promise.reject('Token expired')
+                } else {
+                    return Promise.resolve(res);
                 }
-                return Promise.resolve(res);
             } else {
                 return new Promise((resolve, reject) => {
                     jwt.verify(token, secret, options.verifyOptions, (err, revoked) => {
@@ -183,7 +184,6 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             const secret = await getSecret();
             const vtoken = await verifyTokenAndCache(secret);
             await checkRevoked(vtoken).then(res => {
-                // 数据添加到req
                 set(req, requestProperty, res);
                 callback();
             })
