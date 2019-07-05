@@ -6,7 +6,7 @@ import set = require('lodash.set');
 export type DecodeToken = { [key: string]: string } | null | string;
 export type TokenCreater = (req: http.IncomingMessage, header: Object, payload: Object) => Promise<string>;
 export type IsRevoked = (req: http.IncomingMessage, header: Object, payload: Object) => Promise<boolean>;
-export type GetToken = (req: http.IncomingMessage) => string;
+export type GetToken = (req: http.IncomingMessage) => Promise<string>;
 
 export interface NunuOptions {
     secret: string | TokenCreater;
@@ -76,7 +76,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                 return callback();
             }
         }
-        if (!options || !options.secret) {
+        if (!options && !options.secret) {
             return callback(new Error('Secret should be set'));
         }
         if (req.method === 'OPTIONS') {
@@ -88,11 +88,11 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
         let token: string = '';
 
         if (options.getToken) {
-            try {
-                token = options.getToken(req);
-            } catch (e) {
-                return callback(e)
-            }
+            options.getToken(req).then(res => {
+                token = res;
+            }).catch(err => {
+                return callback(err);
+            })
         } else if (req.headers && req.headers.authorization) {
             let parts = req.headers.authorization.split(' ');
             if (parts.length == 2) {
@@ -141,7 +141,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             if (res) {
                 if (res.exp <= new Date().getTime() / 1000) {
                     if (options.getCache) { options.getCache.delete(token) }
-                    return Promise.reject('Token expired');
+                    return Promise.reject('This Token has expired');
                 } else {
                     return Promise.resolve(res);
                 }
@@ -167,7 +167,6 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
         async function checkRevoked(vtoken: object | string): Promise<string | object> {
             return new Promise((resolve, reject) => {
                 if (options.isRevoked) {
-                    // 判断这个token是否被撤销
                     if (dtoken !== null && typeof (dtoken) !== 'string') {
                         options.isRevoked(req, dtoken.header, dtoken.payload).then(res => {
                             if (res) {

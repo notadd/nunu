@@ -40,7 +40,7 @@ app.use(nunu);
 app.get('/token', (req, res) => {
     const token = sign(
         { 'username': 'zhangsan' },
-        '123456', // secret
+        'zhangsan', // secret
         { algorithm: 'HS384', expiresIn: 60 * 5 }
     )
     res.send(token);
