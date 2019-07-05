@@ -1,20 +1,21 @@
 import { FastifyError, FastifyInstance, Middleware, Plugin } from 'fastify';
 import * as http from 'http';
-import jwt from 'jsonwebtoken';
-import set from 'lodash.set';
+import { decode, verify } from 'jsonwebtoken';
+import set = require('lodash.set');
 
 export type DecodeToken = { [key: string]: string } | null | string;
-export type SecretCreater = (req: http.IncomingMessage, header: string, payload: string) => Promise<string>;
+export type TokenCreater = (req: http.IncomingMessage, header: Object, payload: Object) => Promise<string>;
+export type IsRevoked = (req: http.IncomingMessage, header: Object, payload: Object) => Promise<boolean>;
 export type GetToken = (req: http.IncomingMessage) => string;
 
 export interface NunuOptions {
-    secret: string | SecretCreater;
+    secret: string | TokenCreater;
     verifyOptions: VerifyOptions;
+    isRevoked?: IsRevoked;
     credentialsRequired?: boolean;
-    getToken?: GetToken;
     requestProperty?: string;
-    isRevoked?: SecretCreater;
     unlessPath?: string[];
+    getToken?: GetToken;
     getCache?: Cache;
 }
 
@@ -33,7 +34,7 @@ export interface VerifyOptions {
 export interface Cache {
     get<T>(key: string): T
     save<T>(key: string, val: T): void
-    delete<T>(key: string): T
+    delete<T>(key: string): T | boolean
     clear(): void;
 }
 
@@ -106,13 +107,15 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
 
         if (!token) {
             if (credentialsRequired) {
-                return callback(new Error('Format is Authorization'));
+                return callback(new Error('Token cannot be empty'));
+            } else {
+                return callback();
             }
         }
 
         let dtoken: DecodeToken = '';
         try {
-            dtoken = jwt.decode(token, { complete: true }) || {};
+            dtoken = decode(token, { complete: true }) || {};
         } catch (err) {
             return callback(err);
         }
@@ -136,21 +139,19 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
         async function verifyTokenAndCache(secret: string): Promise<object | string> {
             const res = options.getCache ? options.getCache.get(token) : MemoryCache.get<any | string>(token);
             if (res) {
-                const time = new Date().getTime() / 1000;
-                if (res.exp <= time) {
-                    options.getCache ? options.getCache.delete(token) : MemoryCache.delete(token);
-                    return Promise.reject('Token expired')
+                if (res.exp <= new Date().getTime() / 1000) {
+                    if (options.getCache) { options.getCache.delete(token) }
+                    return Promise.reject('Token expired');
                 } else {
                     return Promise.resolve(res);
                 }
             } else {
                 return new Promise((resolve, reject) => {
-                    jwt.verify(token, secret, options.verifyOptions, (err, revoked) => {
+                    verify(token, secret, options.verifyOptions, (err, revoked) => {
                         if (err) {
-                            reject(err)
+                            reject(err);
                         } else {
-                            options.getCache ? options.getCache.save<object | string>(token, revoked) :
-                                MemoryCache.save<object | string>(token, revoked);
+                            if (options.getCache) { options.getCache.save<object | string>(token, revoked) }
                             resolve(revoked);
                         }
                     });
@@ -170,9 +171,9 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                     if (dtoken !== null && typeof (dtoken) !== 'string') {
                         options.isRevoked(req, dtoken.header, dtoken.payload).then(res => {
                             if (res) {
-                                reject(new Error(`this token has been revoked!`))
+                                resolve(vtoken);
                             }
-                            resolve(vtoken);
+                            reject(new Error(`This token has been revoked!`));
                         });
                     }
                 } else {
@@ -180,6 +181,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                 }
             });
         }
+
         try {
             const secret = await getSecret();
             const vtoken = await verifyTokenAndCache(secret);
