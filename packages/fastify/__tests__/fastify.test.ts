@@ -1,13 +1,45 @@
 import * as fastify from 'fastify';
-import * as http from 'http';
 import { readFileSync } from 'fs';
+import * as http from 'http';
 import { sign } from 'jsonwebtoken';
-import { createMiddleware } from '../lib/fastify';
+import * as redis from 'redis';
+import { createMiddleware, FastifyCache } from '../lib/fastify';
+
+let client = redis.createClient({
+    host: 'localhost',
+    port: 6379
+});
+
+class RedisCache implements FastifyCache {
+    async get<T>(key: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            client.get(key, (err, reply) => {
+                if (err) {
+                    return reject(err);
+                } else {
+                    return resolve(reply);
+                }
+            })
+        })
+    }
+    save<T>(key: string, val: string): void | Promise<void> {
+        client.set(key, val);
+    }
+    delete(key: string): boolean {
+        return client.del(key);
+    }
+    clear(): boolean {
+        return client.flushall();
+    }
+
+
+}
 
 function loadSecret(): string {
     const secret = readFileSync(__dirname + '/index', { encoding: 'utf-8' });
     return secret;
 }
+
 
 let getSecret = async (req: http.IncomingMessage, header: Object, payload: Object) => {
     if (payload && payload.hasOwnProperty('username')) {
@@ -18,7 +50,9 @@ let getSecret = async (req: http.IncomingMessage, header: Object, payload: Objec
 
 let isRevoked = async (req: http.IncomingMessage, header: Object, payload: Object) => {
     if (payload && payload.hasOwnProperty('username')) {
-        return false;
+        if (payload['username'] === 'jack') {
+            return false;
+        }
     }
     return true;
 }
@@ -26,6 +60,7 @@ let isRevoked = async (req: http.IncomingMessage, header: Object, payload: Objec
 const app = fastify();
 const nunu = createMiddleware({
     secret: getSecret,
+    getCache: new RedisCache(),
     isRevoked: isRevoked,
     unlessPath: ['/token', '/favicon.ico'],
     verifyOptions: {
