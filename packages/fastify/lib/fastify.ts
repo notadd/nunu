@@ -77,7 +77,6 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                 let scheme = parts[0];
                 let credentials = parts[1];
                 if (/^Bearer$/i.test(scheme)) {
-                    // 获取到token
                     token = credentials;
                 }
             }

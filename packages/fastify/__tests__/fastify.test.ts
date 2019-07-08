@@ -100,14 +100,14 @@ app.use(nunu);
 // 创建token
 app.get('/token', (req, res) => {
     const token = sign(
-        { 'username': 'zhangsan', 'id': '852852' },
+        { 'username': 'zhangsan', 'id': 'userid' },
         'zhangsan', // secret
         { algorithm: 'HS384', expiresIn: 60 * 5 } //秒
     )
     res.send(token);
 })
 
-app.get('/hello', (req, res) => {
+app.post('/hello', (req, res) => {
     res.send('hello world!')
 })
 
