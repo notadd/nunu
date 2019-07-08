@@ -8,30 +8,6 @@ export type TokenCreater = (req: http.IncomingMessage, header: Object, payload: 
 export type IsRevoked = (req: http.IncomingMessage, header: Object, payload: Object) => Promise<boolean>;
 export type GetToken = (req: http.IncomingMessage) => Promise<string>;
 
-export async function verifyTokenAndCache(options: NunuOptions, token: string, secret: string): Promise<object | string> {
-    const cachePayload = await options.getCache.get(token);
-    if (cachePayload) {
-        const jPayload = JSON.parse(cachePayload);
-        if (jPayload.hasOwnProperty('exp') && jPayload['exp'] >= new Date().getTime() / 1000) {
-            return Promise.resolve(jPayload);
-        } else {
-            options.getCache.delete(token);
-            return Promise.reject('jwt expired');
-        }
-    } else {
-        return new Promise((resolve, reject) => {
-            verify(token, secret, options.verifyOptions, (err, revoked) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    options.getCache.save<string>(token, JSON.stringify(revoked));
-                    resolve(revoked);
-                }
-            });
-        });
-    }
-}
-
 export interface NunuOptions {
     secret: string | TokenCreater;
     verifyOptions: VerifyOptions;
@@ -40,7 +16,6 @@ export interface NunuOptions {
     requestProperty?: string;
     unlessPath?: string[];
     getToken?: GetToken;
-    getCache?: FastifyCache;
 }
 
 export interface VerifyOptions {
@@ -53,13 +28,6 @@ export interface VerifyOptions {
     ignoreNotBefore?: boolean;
     jwtid?: string;
     subject?: string;
-}
-
-export interface FastifyCache {
-    get<T>(key: string): string | Promise<string>;
-    save<T>(key: string, val: string): void | Promise<void>;
-    delete(key: string): boolean | Promise<boolean>;
-    clear(): boolean | Promise<boolean>;
 }
 
 /**
@@ -146,19 +114,15 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
          * @param secret 秘钥
          */
         async function verifyToken(secret: string): Promise<object | string> {
-            if (options.getCache) {
-                return verifyTokenAndCache(options, token, secret);
-            } else {
-                return new Promise((resolve, reject) => {
-                    verify(token, secret, options.verifyOptions, (err, revoked) => {
-                        if (err) {
-                            reject(err);
-                        } else {
-                            resolve(revoked);
-                        }
-                    });
+            return new Promise((resolve, reject) => {
+                verify(token, secret, options.verifyOptions, (err, revoked) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(revoked);
+                    }
                 });
-            }
+            });
         }
 
         async function checkRevoked(vtoken: object | string): Promise<string | object> {
