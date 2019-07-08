@@ -1,8 +1,6 @@
 # `nunu`
-
-## Description
 nunu是一款验证JsonWebToken的中间件，它可以帮您验证JWT是否有效以及将JWT的Payload添加到到HTTP请求上，专注安全的同时方便您的操作。
-## Usage
+# Usage
 
 ```
 /**
@@ -16,6 +14,7 @@ nunu是一款验证JsonWebToken的中间件，它可以帮您验证JWT是否有�
 const app = fastify();
 const nunu = createMiddleware({
     secret: '123456',
+    isRevoked: isRevoked,
     unlessPath: ['/token'],
     requestProperty: 'message',
     verifyOptions: {
@@ -25,8 +24,23 @@ const nunu = createMiddleware({
 app.use(nunu);
 app.listen(9000)
 ```
-## Customize Verify
-默认的验证策略是您需要在Reques发送Authorization的Header,其携带格式应为：
+# Customize
+### IsRevoked 
+isRevoked可以帮我们过滤违规或者列入黑名单的用户,它是可以选择的,可以需要根据情况自定义
+```
+let isRevoked = async (req: http.IncomingMessage, header: Object, payload: Object) => {
+    if (payload && payload.hasOwnProperty('id')) {
+        const val = await getValue(payload['id']);
+        // 是否在黑名单内.如果存在即返回false
+        if (val) {
+            return false;
+        }
+    }
+    return true;
+}
+```
+### GetToken
+nunu默认的获取Token的策略是您需要在Reques发送Authorization的Header,其携带格式应为：
 > Bearer Token
 
 您可以根据您的需求自定义获取Token的策略
