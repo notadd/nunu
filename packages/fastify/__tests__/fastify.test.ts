@@ -77,8 +77,7 @@ const nunu = createMiddleware({
     unlessPath: ['/token', '/favicon.ico'],
     verifyOptions: {
         algorithms: ['HS384'], //default HS256
-    },
-    credentialsRequired: false
+    }
 });
 
 app.use(nunu);

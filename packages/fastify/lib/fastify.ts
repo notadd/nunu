@@ -2,6 +2,7 @@ import { FastifyError, FastifyInstance, Middleware, Plugin } from 'fastify';
 import * as http from 'http';
 import { decode, verify } from 'jsonwebtoken';
 import set = require('lodash.set');
+import { VerifyError } from './error/verify.error';
 
 export type DecodeToken = { [key: string]: string } | null | string;
 export type TokenCreater = (req: http.IncomingMessage, header: Object, payload: Object) => Promise<string>;
@@ -54,7 +55,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             }
         }
         if (!options && !options.secret) {
-            return callback(new Error('Secret should be set'));
+            return callback(new VerifyError('Secret should be set', 401));
         }
         if (req.method === 'OPTIONS') {
             callback();
@@ -84,7 +85,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
 
         if (!token) {
             if (credentialsRequired) {
-                return callback(new Error('Token cannot be empty'));
+                return callback(new VerifyError('Token cannot be empty', 401));
             } else {
                 return callback();
             }
@@ -133,7 +134,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                             if (res) {
                                 resolve(vtoken);
                             }
-                            reject(new Error(`This token has been revoked!`));
+                            reject(new VerifyError(`This token has been revoked!`, 401));
                         });
                     }
                 } else {
