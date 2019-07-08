@@ -34,18 +34,33 @@ let client = redis.createClient({
         }
     }
     */
-   
-   function getValue(key: string): Promise<string>{
-       return new Promise((resolve, reject) => {
-           client.get(key, (err, reply) => {
-               if (err) {
-                   return reject(err);
+function getToken(req: http.IncomingMessage): Promise<string> {
+    if (req.headers && req.headers.authorization) {
+        let parts = req.headers.authorization.split('=');
+        if (parts.length == 2) {
+            let scheme = parts[0];
+            let credentials = parts[1];
+            if (/^Bearer$/i.test(scheme)) {
+                // 获取到token
+                return Promise.resolve(credentials);
+            }
+        }
+    }
+    return Promise.reject(new Error('jwt　error'));
+
+}
+
+function getValue(key: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        client.get(key, (err, reply) => {
+            if (err) {
+                return reject(err);
             } else {
                 return resolve(reply);
             }
         })
     })
- }
+}
 
 function loadSecret(): string {
     const secret = readFileSync(__dirname + '/index', { encoding: 'utf-8' });
@@ -87,7 +102,7 @@ app.get('/token', (req, res) => {
     const token = sign(
         { 'username': 'zhangsan', 'id': '852852' },
         'zhangsan', // secret
-        { algorithm: 'HS384', expiresIn: 60 * 5 }
+        { algorithm: 'HS384', expiresIn: 60 * 5 } //秒
     )
     res.send(token);
 })

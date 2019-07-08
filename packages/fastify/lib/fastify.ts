@@ -66,11 +66,11 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
         let token: string = '';
 
         if (options.getToken) {
-            await options.getToken(req).then(res => {
-                token = res;
-            }).catch(err => {
-                return callback(err);
-            })
+            try {
+                await options.getToken(req).then(res => { token = res });
+            } catch (e) {
+                return callback(new VerifyError(e.message ? e.message : e, 401));
+            }
         } else if (req.headers && req.headers.authorization) {
             let parts = req.headers.authorization.split(' ');
             if (parts.length == 2) {
@@ -95,7 +95,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
         try {
             dtoken = decode(token, { complete: true }) || {};
         } catch (err) {
-            return callback(err);
+            return callback(new VerifyError(err.message, 401));
         }
 
         async function getSecret(): Promise<string> {
@@ -110,15 +110,11 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             });
         }
 
-        /**
-         * 验证Token并增加缓存
-         * @param secret 秘钥
-         */
         async function verifyToken(secret: string): Promise<object | string> {
             return new Promise((resolve, reject) => {
                 verify(token, secret, options.verifyOptions, (err, revoked) => {
                     if (err) {
-                        reject(err);
+                        reject(new VerifyError(err.message, 401));
                     } else {
                         resolve(revoked);
                     }
