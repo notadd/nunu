@@ -1,8 +1,8 @@
 import { FastifyError, FastifyInstance, Middleware, Plugin } from 'fastify';
 import * as http from 'http';
 import { decode, verify } from 'jsonwebtoken';
-import set = require('lodash.set');
 import { VerifyError } from './error/verify.error';
+import set = require('lodash.set');
 
 export type DecodeToken = { [key: string]: string } | null | string;
 export type TokenCreater = (req: http.IncomingMessage, header: Object, payload: Object) => Promise<string>;
