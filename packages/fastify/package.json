@@ -1,6 +1,6 @@
 {
   "name": "@notadd/fastify",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "> TODO: description",
   "author": "imeepos <1037483576@qq.com>",
   "homepage": "https://github.com/meepobrother/b2b-shop#readme",
@@ -11,8 +11,8 @@
     "test": "__tests__"
   },
   "publishConfig": {
-		"access": "public"
-	},
+    "access": "public"
+  },
   "files": [
     "lib"
   ],
