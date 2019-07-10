@@ -1,31 +1,114 @@
+import * as fastify from 'fastify';
+import { readFileSync } from 'fs';
+import * as http from 'http';
+import { sign } from 'jsonwebtoken';
+import * as redis from 'redis';
 import { createMiddleware } from '../lib/fastify';
-import fastify from 'fastify';
-import jwt from 'jsonwebtoken';
+
+let client = redis.createClient({
+    host: 'localhost',
+    port: 6379
+});
+
+/**
+ class RedisCache implements FastifyCache {
+     async get<T>(key: string): Promise<string> {
+         return new Promise((resolve, reject) => {
+             client.get(key, (err, reply) => {
+                 if (err) {
+                     return reject(err);
+                    } else {
+                        return resolve(reply);
+                    }
+                })
+            })
+        }
+        save<T>(key: string, val: string): void | Promise<void> {
+            client.set(key, val);
+        }
+        delete(key: string): boolean {
+            return client.del(key);
+        }
+        clear(): boolean {
+            return client.flushall();
+        }
+    }
+    */
+function getToken(req: http.IncomingMessage): Promise<string> {
+    if (req.headers && req.headers.authorization) {
+        let parts = req.headers.authorization.split('=');
+        if (parts.length == 2) {
+            let scheme = parts[0];
+            let credentials = parts[1];
+            if (/^Bearer$/i.test(scheme)) {
+                // 获取到token
+                return Promise.resolve(credentials);
+            }
+        }
+    }
+    return Promise.reject(new Error('jwt　error'));
+
+}
+
+function getValue(key: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        client.get(key, (err, reply) => {
+            if (err) {
+                return reject(err);
+            } else {
+                return resolve(reply);
+            }
+        })
+    })
+}
+
+function loadSecret(): string {
+    const secret = readFileSync(__dirname + '/index', { encoding: 'utf-8' });
+    return secret;
+}
+
+
+let getSecret = async (req: http.IncomingMessage, header: Object, payload: Object) => {
+    if (payload && payload.hasOwnProperty('username')) {
+        return payload['username'];
+    }
+    return '123456';
+}
+
+let isRevoked = async (req: http.IncomingMessage, header: Object, payload: Object) => {
+    if (payload && payload.hasOwnProperty('id')) {
+        const val = await getValue(payload['id']);
+        if (val) {
+            return false;
+        }
+    }
+    return true;
+}
+
 const app = fastify();
 const nunu = createMiddleware({
-    secret: '秘钥',                    //秘钥
-    verifyOptions: {                  // 验证token的参数
-        algorithms: ['HS256']
-    },
-    unlessPath: ['/token']            // 排除的Path
+    secret: getSecret,
+    isRevoked: isRevoked,
+    unlessPath: ['/token', '/favicon.ico'],
+    verifyOptions: {
+        algorithms: ['HS384'], //default HS256
+    }
 });
+
 app.use(nunu);
 
 // 创建token
-app.get('/token', () => {
-    const token = jwt.sign(
-        'payload: haha',
-        '秘钥',
-        { algorithm: 'HS256' }
+app.get('/token', (req, res) => {
+    const token = sign(
+        { 'username': 'zhangsan', 'id': 'userid' },
+        'zhangsan', // secret
+        { algorithm: 'HS384', expiresIn: 60 * 5 } //秒
     )
-    return new Promise((resolve, reject) => {
-        return resolve(token);
-    })
+    res.send(token);
 })
 
-app.get('/hello', () => {
-    return new Promise((resolve, reject) => {
-        return resolve('hello world');
-    })
+app.post('/hello', (req, res) => {
+    res.send('hello world!')
 })
+
 app.listen(9000)

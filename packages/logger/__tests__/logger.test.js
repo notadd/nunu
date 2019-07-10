@@ -1,12 +1,25 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-var logger_1 = require("../lib/logger");
-var fastify_1 = __importDefault(require("fastify"));
-var app = fastify_1.default();
-var logger = logger_1.createMiddleware({});
+const logger_1 = require("../lib/logger");
+const fastify = require("fastify");
+const app = fastify();
+const logger = logger_1.createMiddleware({
+    categories: {
+        default: {
+            appenders: [
+                "appender"
+            ], level: "info"
+        },
+        categorie: {
+            appenders: [
+                "appender",
+            ], level: "info"
+        }
+    },
+    appenders: {
+        appender: { type: "file", filename: (__dirname) + "/log.txt" }
+    }
+});
 app.use(logger);
 // app.get('/token', () => {
 //     // 创建token5
@@ -27,3 +40,4 @@ app.use(logger);
 //     })
 // })
 app.listen(9000);
+//# sourceMappingURL=logger.test.js.map
