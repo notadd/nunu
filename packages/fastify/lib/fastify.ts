@@ -1,7 +1,6 @@
 import { FastifyError, FastifyInstance, Middleware, Plugin } from 'fastify';
 import * as http from 'http';
 import { decode, verify } from 'jsonwebtoken';
-import { VerifyError } from './error/verify.error';
 import set = require('lodash.set');
 
 export type DecodeToken = { [key: string]: string } | null | string;
@@ -13,7 +12,6 @@ export interface NunuOptions {
     secret: string | TokenCreater;
     verifyOptions: VerifyOptions;
     isRevoked?: IsRevoked;
-    credentialsRequired?: boolean;
     requestProperty?: string;
     unlessPath?: string[];
     getToken?: GetToken;
@@ -55,21 +53,20 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             }
         }
         if (!options && !options.secret) {
-            return callback(new VerifyError('Secret should be set', 401));
+            return callback();
         }
         if (req.method === 'OPTIONS') {
             callback();
         }
 
         let requestProperty = options.requestProperty || 'user';
-        let credentialsRequired = typeof (options.credentialsRequired) === 'undefined' ? true : options.credentialsRequired;
         let token: string = '';
 
         if (options.getToken) {
             try {
                 await options.getToken(req).then(res => { token = res });
             } catch (e) {
-                return callback(new VerifyError(e.message ? e.message : e, 401));
+                return callback();
             }
         } else if (req.headers && req.headers.authorization) {
             let parts = req.headers.authorization.split(' ');
@@ -83,18 +80,14 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
         }
 
         if (!token) {
-            if (credentialsRequired) {
-                return callback(new VerifyError('Token cannot be empty', 401));
-            } else {
-                return callback();
-            }
+            return callback();
         }
 
         let dtoken: DecodeToken = '';
         try {
             dtoken = decode(token, { complete: true }) || {};
         } catch (err) {
-            return callback(new VerifyError(err.message, 401));
+            return callback();
         }
 
         async function getSecret(): Promise<string> {
@@ -113,7 +106,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             return new Promise((resolve, reject) => {
                 verify(token, secret, options.verifyOptions, (err, revoked) => {
                     if (err) {
-                        reject(new VerifyError(err.message, 401));
+                        reject();
                     } else {
                         resolve(revoked);
                     }
@@ -129,7 +122,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                             if (res) {
                                 resolve(vtoken);
                             }
-                            reject(new VerifyError(`This token has been revoked!`, 401));
+                            reject();
                         });
                     }
                 } else {
@@ -146,7 +139,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                 callback();
             })
         } catch (e) {
-            callback(e);
+            callback();
         }
 
     }

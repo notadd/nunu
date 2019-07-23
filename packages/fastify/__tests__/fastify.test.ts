@@ -2,13 +2,12 @@ import * as fastify from 'fastify';
 import { readFileSync } from 'fs';
 import * as http from 'http';
 import { sign } from 'jsonwebtoken';
-import * as redis from 'redis';
 import { createMiddleware } from '../lib/fastify';
 
-let client = redis.createClient({
-    host: 'localhost',
-    port: 6379
-});
+// let client = redis.createClient({
+//     host: 'localhost',
+//     port: 6379
+// });
 
 /**
  class RedisCache implements FastifyCache {
@@ -50,17 +49,17 @@ function getToken(req: http.IncomingMessage): Promise<string> {
 
 }
 
-function getValue(key: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        client.get(key, (err, reply) => {
-            if (err) {
-                return reject(err);
-            } else {
-                return resolve(reply);
-            }
-        })
-    })
-}
+// function getValue(key: string): Promise<string> {
+//     return new Promise((resolve, reject) => {
+//         client.get(key, (err, reply) => {
+//             if (err) {
+//                 return reject(err);
+//             } else {
+//                 return resolve(reply);
+//             }
+//         })
+//     })
+// }
 
 function loadSecret(): string {
     const secret = readFileSync(__dirname + '/index', { encoding: 'utf-8' });
@@ -75,23 +74,23 @@ let getSecret = async (req: http.IncomingMessage, header: Object, payload: Objec
     return '123456';
 }
 
-let isRevoked = async (req: http.IncomingMessage, header: Object, payload: Object) => {
-    if (payload && payload.hasOwnProperty('id')) {
-        const val = await getValue(payload['id']);
-        if (val) {
-            return false;
-        }
-    }
-    return true;
-}
+// let isRevoked = async (req: http.IncomingMessage, header: Object, payload: Object) => {
+//     if (payload && payload.hasOwnProperty('id')) {
+//         const val = await getValue(payload['id']);
+//         if (val) {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
 
 const app = fastify();
 const nunu = createMiddleware({
     secret: getSecret,
-    isRevoked: isRevoked,
+    // isRevoked: isRevoked,
     unlessPath: ['/token', '/favicon.ico'],
     verifyOptions: {
-        algorithms: ['HS384'], //default HS256
+        algorithms: ['HS384']
     }
 });
 
@@ -108,6 +107,7 @@ app.get('/token', (req, res) => {
 })
 
 app.post('/hello', (req, res) => {
+    console.log(req)
     res.send('hello world!')
 })
 
