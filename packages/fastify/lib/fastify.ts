@@ -106,7 +106,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
             return new Promise((resolve, reject) => {
                 verify(token, secret, options.verifyOptions, (err, revoked) => {
                     if (err) {
-                        reject();
+                        reject(err);
                     } else {
                         resolve(revoked);
                     }
