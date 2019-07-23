@@ -1,7 +1,9 @@
-import { createMiddleware } from "../lib/logger";
-import fastify = require('fastify');
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const logger_1 = require("../lib/logger");
+const fastify = require("fastify");
 const app = fastify();
-const logger = createMiddleware({
+const logger = logger_1.createMiddleware({
     categories: {
         default: {
             appenders: [
@@ -18,8 +20,7 @@ const logger = createMiddleware({
         appender: { type: "file", filename: (__dirname) + "/log.txt" }
     }
 });
-app.use(logger)
-
+app.use(logger);
 // app.get('/token', () => {
 //     // 创建token5
 //     const token = jwt.sign(
@@ -33,10 +34,10 @@ app.use(logger)
 //         return resolve(token);
 //     })
 // })
-
 // app.get('/hello', () => { 
 //     return new Promise((resolve, reject) => {
 //         return resolve('hello world');
 //     })
 // })
-app.listen(9000)
+app.listen(9000);
+//# sourceMappingURL=logger.test.js.map

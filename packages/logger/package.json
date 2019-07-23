@@ -1,6 +1,6 @@
 {
-  "name": "logger",
-  "version": "0.0.0",
+  "name": "@notadd/nunu-logger",
+  "version": "0.0.2",
   "description": "> TODO: description",
   "author": "tangxiaonuo <250148240@qq.com>",
   "homepage": "https://github.com/notadd/nunu#readme",
@@ -9,6 +9,9 @@
   "directories": {
     "lib": "lib",
     "test": "__tests__"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "lib"

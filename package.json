@@ -25,6 +25,8 @@
 	},
 	"scripts": {
 		"commit": "git-cz",
-		"ts": "./node_modules/.bin/ts-node"
+		"ts": "./node_modules/.bin/ts-node",
+		"compiler": "tsc -p tsconfig.json",
+		"clear": "yarn ts ./tools/clear.ts"
 	}
 }

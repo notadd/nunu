@@ -1,6 +1,7 @@
 import { Plugin, FastifyInstance, FastifyError, Middleware } from 'fastify';
 import * as http from 'http'
-import log4js, { Logger, levels } from 'log4js';
+import { Logger, levels } from 'log4js';
+import log4js = require('log4js');
 
 export interface NunuOptions {
     categories: {
