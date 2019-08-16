@@ -52,7 +52,7 @@ export function createMiddleware<HttpServer = http.Server, HttpRequest extends h
                 return callback();
             }
         }
-        if (!options && !options.secret) {
+        if (!options || !options.secret) {
             return callback();
         }
         if (req.method === 'OPTIONS') {
