@@ -13,7 +13,7 @@
 		"typescript": "^3.5.2"
 	},
 	"dependencies": {
-		"@types/async": "^3.0.0",
+		"@types/async": "^3.0.8",
 		"@types/jsonwebtoken": "^8.3.2",
 		"@types/lodash.set": "^4.3.6",
 		"@types/redis": "^2.8.13",
