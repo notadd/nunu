@@ -1,32 +1,36 @@
 {
-	"name": "root",
-	"private": true,
-	"devDependencies": {
-		"@types/mocha": "^5.2.7",
-		"@types/node": "^12.0.12",
-		"chai": "^4.2.0",
-		"lerna": "^3.14.1",
-		"mocha": "^6.1.4",
-		"ts-node": "^8.3.0",
-		"tsconfig-paths": "^3.8.0",
-		"tslib": "^1.10.0",
-		"typescript": "^3.5.2"
-	},
-	"dependencies": {
-		"@types/async": "^3.0.0",
-		"@types/jsonwebtoken": "^8.3.2",
-		"@types/lodash.set": "^4.3.6",
-		"@types/redis": "^2.8.13",
-		"fastify": "^2.6.0",
-		"jsonwebtoken": "^8.5.1",
-		"lodash.set": "^4.3.2",
-		"log4js": "^4.4.0",
-		"redis": "^2.8.0"
-	},
-	"scripts": {
-		"commit": "git-cz",
-		"ts": "./node_modules/.bin/ts-node",
-		"compiler": "tsc -p tsconfig.json",
-		"clear": "yarn ts ./tools/clear.ts"
-	}
+  "name": "root",
+  "private": true,
+  "devDependencies": {
+    "@types/mocha": "^5.2.7",
+    "@types/node": "^12.0.12",
+    "chai": "^4.2.0",
+    "lerna": "^3.14.1",
+    "mocha": "^6.1.4",
+    "ts-node": "^8.3.0",
+    "tsconfig-paths": "^3.8.0",
+    "tslib": "^1.10.0",
+    "typescript": "^3.5.2"
+  },
+  "dependencies": {
+    "@types/async": "^3.0.0",
+    "@types/jsonwebtoken": "^8.3.2",
+    "@types/lodash.set": "^4.3.6",
+    "@types/redis": "^2.8.13",
+    "fastify": "^2.6.0",
+    "jsonwebtoken": "^8.5.1",
+    "lodash.set": "^4.3.2",
+    "log4js": "^4.4.0",
+    "redis": "^2.8.0",
+    "snyk": "^1.316.1"
+  },
+  "scripts": {
+    "commit": "git-cz",
+    "ts": "./node_modules/.bin/ts-node",
+    "compiler": "tsc -p tsconfig.json",
+    "clear": "yarn ts ./tools/clear.ts",
+    "snyk-protect": "snyk protect",
+    "prepare": "yarn run snyk-protect"
+  },
+  "snyk": true
 }
